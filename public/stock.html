@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stock Management</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Stock Management</h1>
+
+    <div class="search-box">
+      <input type="text" id="stockSearch" placeholder="Search item...">
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Quantity</th>
+          <th>Expiry</th>
+        </tr>
+      </thead>
+      <tbody id="stockTable"></tbody>
+    </table>
+
+    <h2>Add New Stock</h2>
+    <form id="addStockForm">
+      <input type="text" name="name" placeholder="Item Name" required>
+      <input type="number" name="price" placeholder="Price" required>
+      <input type="number" name="quantity" placeholder="Quantity" required>
+      <input type="date" name="expiry" required>
+      <button type="submit">Add Stock</button>
+    </form>
+  </div>
+  <script type="module" src="js/stock.js"></script>
+</body>
+</html>

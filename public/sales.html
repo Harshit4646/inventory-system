@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Management</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Sales</h1>
+
+    <form id="saleForm">
+      <div id="saleItemsDiv"></div>
+
+      <label>Payment Type:</label>
+      <select id="paymentType" name="paymentType" required>
+        <option value="cash">Cash</option>
+        <option value="online">Online</option>
+        <option value="borrow">Borrow</option>
+      </select>
+
+      <input type="text" id="borrowerName" placeholder="Borrower Name (if borrow)">
+
+      <button type="submit">Add Sale</button>
+    </form>
+  </div>
+  <script type="module" src="js/sales.js"></script>
+</body>
+</html>
