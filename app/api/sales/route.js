@@ -1,59 +1,77 @@
-import { db } from "@/lib/db";
+import pool from "../../../../db/connection";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req) {
-  try {
-    const { items, paymentType, borrowerName } = await req.json();
+  const { items, type, borrower } = await req.json();
 
-    if (!items || items.length === 0) {
-      return new Response(JSON.stringify({ error: "No items provided" }), { status: 400 });
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [saleRes] = await conn.query(
+      `INSERT INTO sales(total_amount,sale_type,editable_until)
+       VALUES(0,?,DATE_ADD(CURDATE(), INTERVAL 7 DAY))`,
+      [type]
+    );
+    const saleId = saleRes.insertId;
+
+    let total = 0;
+
+    for (const i of items) {
+      total += i.price * i.qty;
+
+      await conn.query(
+        `INSERT INTO sale_items(sale_id,stock_id,quantity,price)
+         VALUES(?,?,?,?)`,
+        [saleId, i.stock_id, i.qty, i.price]
+      );
+
+      await conn.query(
+        `UPDATE stock SET quantity=quantity-? WHERE id=?`,
+        [i.qty, i.stock_id]
+      );
     }
 
-    // Calculate total sale
-    const total = items.reduce((sum, i) => sum + i.qty * i.price, 0);
-
-    // Insert into sales table
-    const [saleResult] = await db.query(
-      "INSERT INTO sales (payment_type, borrower_name, total) VALUES (?,?,?)",
-      [paymentType, borrowerName || null, total]
+    await conn.query(
+      `UPDATE sales SET total_amount=? WHERE id=?`,
+      [total, saleId]
     );
 
-    const saleId = saleResult.insertId;
-
-    // Insert into sale_items and reduce stock quantity
-    for (let i of items) {
-      // Insert sale item
-      await db.query(
-        "INSERT INTO sale_items (sale_id, stock_id, qty, price) VALUES (?,?,?,?)",
-        [saleId, i.stockId, i.qty, i.price]
+    /* Borrow logic */
+    if (type === "borrow") {
+      let [[b]] = await conn.query(
+        "SELECT id FROM borrowers WHERE name=?",
+        [borrower]
       );
 
-      // Update stock
-      await db.query(
-        "UPDATE stock SET quantity = quantity - ? WHERE id = ?",
-        [i.qty, i.stockId]
-      );
-
-      // If borrow, save to borrow_history
-      if (paymentType === "borrow") {
-        const [[stockRow]] = await db.query("SELECT name FROM stock WHERE id = ?", [i.stockId]);
-        await db.query(
-          "INSERT INTO borrow_history (borrower_name, item_name, qty, price, sale_date) VALUES (?,?,?,?,CURDATE())",
-          [borrowerName, stockRow.name, i.qty, i.price]
+      let borrowerId;
+      if (!b) {
+        const [r] = await conn.query(
+          "INSERT INTO borrowers(name,total_due) VALUES(?,0)",
+          [borrower]
         );
-      }
-    }
+        borrowerId = r.insertId;
+      } else borrowerId = b.id;
 
-    // If payment is borrow, update borrower table
-    if (paymentType === "borrow") {
-      await db.query(
-        "INSERT INTO borrowers (name,balance) VALUES (?,?) ON DUPLICATE KEY UPDATE balance = balance + ?",
-        [borrowerName, total, total]
+      await conn.query(
+        `INSERT INTO borrower_ledger(borrower_id,sale_id,amount)
+         VALUES(?,?,?)`,
+        [borrowerId, saleId, total]
+      );
+
+      await conn.query(
+        `UPDATE borrowers SET total_due=total_due+? WHERE id=?`,
+        [total, borrowerId]
       );
     }
 
-    return new Response(JSON.stringify({ success: true, saleId }), { status: 200 });
-
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    await conn.commit();
+    return Response.json({ success: true });
+  } catch (e) {
+    await conn.rollback();
+    return Response.json({ error: e.message }, { status: 500 });
+  } finally {
+    conn.release();
   }
 }
