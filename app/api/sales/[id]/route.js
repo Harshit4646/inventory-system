@@ -9,10 +9,10 @@ export async function DELETE(_, { params }) {
     [saleId]
   );
 
-  for (const item of items) {
+  for (const i of items) {
     await db.query(
-      "UPDATE stock SET quantity = quantity + ? WHERE product_id=?",
-      [item.quantity, item.product_id]
+      "UPDATE stock SET quantity = quantity + ? WHERE id=?",
+      [i.quantity, i.stock_id]
     );
   }
 
