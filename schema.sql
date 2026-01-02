@@ -32,11 +32,14 @@ CREATE TABLE IF NOT EXISTS sale_items (
 );
 
 -- Borrowers Table
-CREATE TABLE IF NOT EXISTS borrowers (
+CREATE TABLE borrowers (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) UNIQUE NOT NULL,
-  balance DECIMAL(10,2) NOT NULL
+  name VARCHAR(100),
+  sale_id INT,
+  amount DECIMAL(10,2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- Payments Table (borrower payments)
 CREATE TABLE IF NOT EXISTS payments (
@@ -55,3 +58,4 @@ CREATE TABLE IF NOT EXISTS expired (
   qty INT NOT NULL,
   expiry DATE NOT NULL
 );
+
