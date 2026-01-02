@@ -1,8 +1,23 @@
-export async function api(url, method="GET", body=null){
-  const res = await fetch(url, {
-    method,
-    headers: { "Content-Type":"application/json" },
-    body: body ? JSON.stringify(body) : null
-  });
-  return res.json();
+function goPage(page) {
+  switch(page) {
+    case 'dashboard':
+      loadDashboard();
+      break;
+    case 'stock':
+      loadStock();
+      break;
+    case 'sales':
+      loadSales();
+      break;
+    case 'borrowers':
+      loadBorrowers();
+      break;
+    case 'expired':
+      loadExpired();
+      break;
+  }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadDashboard();
+});
