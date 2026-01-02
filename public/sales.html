@@ -2,31 +2,43 @@
 <html>
 <head>
   <title>Sales</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
+  <h1>Sales</h1>
   <nav>
-    <a href="/index.html">Dashboard</a>
+    <button onclick="location.href='index.html'">Dashboard</button>
+    <button onclick="location.href='stock.html'">Stock</button>
+    <button onclick="location.href='borrowers.html'">Borrowers</button>
+    <button onclick="location.href='sales-bills.html'">Sales Bills</button>
   </nav>
 </header>
 
-<div class="container">
+<main>
 
-  <div class="card">
-    <h3>New Sale</h3>
-    <input id="buyer" placeholder="Borrower name (if borrow)">
-    <select id="type">
-      <option value="cash">Cash</option>
-      <option value="online">Online</option>
-      <option value="borrow">Borrow</option>
-    </select>
-    <button onclick="submitSale()">Submit Sale</button>
-  </div>
+<div class="card">
+  <h2>New Sale</h2>
 
+  <input type="text" id="saleProductSearch" placeholder="Search product">
+  <div id="saleProductList"></div>
+
+  <input type="number" id="saleQty" placeholder="Quantity">
+
+  <select id="paymentType">
+    <option value="cash">Cash</option>
+    <option value="online">Online</option>
+    <option value="borrow">Borrow</option>
+  </select>
+
+  <input type="text" id="borrowerName" placeholder="Borrower name (only if borrow)">
+
+  <button class="action-btn" onclick="addSale()">Add Sale</button>
 </div>
 
-<script src="/js/sales.js"></script>
+</main>
+
+<script src="sales.js"></script>
 </body>
 </html>
