@@ -2,20 +2,34 @@
 <html>
 <head>
   <title>Expired Stock</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
+  <h1>Expired Items</h1>
   <nav>
-    <a href="/index.html">Dashboard</a>
+    <button onclick="location.href='index.html'">Dashboard</button>
+    <button onclick="location.href='stock.html'">Stock</button>
   </nav>
 </header>
 
-<div class="container">
-  <table id="expired"></table>
+<main>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Expiry</th>
+      </tr>
+    </thead>
+    <tbody id="expiredTable"></tbody>
+  </table>
 </div>
+</main>
 
-<script src="/js/expired.js"></script>
+<script src="expired.js"></script>
 </body>
 </html>
