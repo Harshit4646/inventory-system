@@ -1,43 +1,23 @@
-import pool from "../../../../db/connection";
+import { getDB } from "@/db/connection";
 
-export const dynamic = "force-dynamic";
-
-/* GET stock */
 export async function GET() {
-  const [rows] = await pool.query(`
-    SELECT s.id, p.name, s.price, s.quantity, s.expiry_date
+  const db = getDB();
+  const [rows] = await db.query(`
+    SELECT s.id, p.name, s.quantity, s.expiry_date
     FROM stock s
     JOIN products p ON p.id = s.product_id
-    WHERE s.quantity > 0
     ORDER BY p.name
   `);
   return Response.json(rows);
 }
 
-/* ADD stock */
 export async function POST(req) {
-  const { name, price, quantity, expiry_date } = await req.json();
+  const { product_id, quantity, expiry_date } = await req.json();
+  const db = getDB();
 
-  let [[product]] = await pool.query(
-    "SELECT id FROM products WHERE name=?",
-    [name]
-  );
-
-  let productId;
-  if (!product) {
-    const [res] = await pool.query(
-      "INSERT INTO products(name) VALUES(?)",
-      [name]
-    );
-    productId = res.insertId;
-  } else {
-    productId = product.id;
-  }
-
-  await pool.query(
-    `INSERT INTO stock(product_id,price,quantity,expiry_date)
-     VALUES(?,?,?,?)`,
-    [productId, price, quantity, expiry_date]
+  await db.query(
+    "INSERT INTO stock (product_id, quantity, expiry_date) VALUES (?,?,?)",
+    [product_id, quantity, expiry_date || null]
   );
 
   return Response.json({ success: true });
