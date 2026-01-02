@@ -1,36 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Stock</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <meta charset="UTF-8">
+  <title>Stock Management</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
+  <h1>Stock</h1>
   <nav>
-    <a href="/index.html">Dashboard</a>
+    <button onclick="location.href='index.html'">Dashboard</button>
+    <button onclick="location.href='sales.html'">Sales</button>
+    <button onclick="location.href='borrowers.html'">Borrowers</button>
+    <button onclick="location.href='expired.html'">Expired</button>
   </nav>
 </header>
 
-<div class="container">
+<main>
 
+  <!-- ADD STOCK -->
   <div class="card">
-    <h3>Add Stock</h3>
-    <input id="name" placeholder="Product name">
-    <input id="price" type="number" placeholder="Price">
-    <input id="qty" type="number" placeholder="Quantity">
-    <input id="expiry" type="date">
-    <button onclick="addStock()">Add</button>
+    <h2>Add Stock</h2>
+
+    <input type="text" id="productSearch" placeholder="Search product name">
+    <div id="productSuggestions"></div>
+
+    <input type="number" id="price" placeholder="Price">
+    <input type="number" id="quantity" placeholder="Quantity">
+    <input type="date" id="expiry">
+
+    <button class="action-btn" onclick="addStock()">Add Stock</button>
   </div>
 
+  <!-- STOCK LIST -->
   <div class="card">
-    <h3>Stock List</h3>
-    <input class="search" id="search" placeholder="Search product">
-    <table id="stockTable"></table>
+    <h2>Current Stock</h2>
+
+    <input type="text" id="stockSearch" placeholder="Search stock">
+    
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Expiry</th>
+          </tr>
+        </thead>
+        <tbody id="stockTable"></tbody>
+      </table>
+    </div>
   </div>
 
-</div>
+</main>
 
-<script src="/js/stock.js"></script>
+<script src="stock.js"></script>
 </body>
 </html>
