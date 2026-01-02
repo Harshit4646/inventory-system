@@ -1,39 +1,33 @@
-import { db } from "@/lib/db";
+import pool from "../../../../db/connection";
 
+export const dynamic = "force-dynamic";
+
+/* List borrowers */
 export async function GET() {
-  try {
-    const [rows] = await db.query("SELECT * FROM borrowers ORDER BY name ASC");
-    return new Response(JSON.stringify(rows), { status: 200 });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-  }
+  const [rows] = await pool.query(
+    "SELECT * FROM borrowers WHERE total_due > 0"
+  );
+  return Response.json(rows);
 }
 
-import { db } from "@/lib/db";
-
+/* Payment */
 export async function POST(req) {
-  try {
-    const { name, paidCash, paidOnline, paidDiscount } = await req.json();
+  const { borrower_id, amount, mode } = await req.json();
 
-    const paidTotal = (paidCash || 0) + (paidOnline || 0) + (paidDiscount || 0);
+  await pool.query(
+    `INSERT INTO payments(borrower_id,amount,mode)
+     VALUES(?,?,?)`,
+    [borrower_id, amount, mode]
+  );
 
-    // Reduce borrower balance
-    await db.query(
-      "UPDATE borrowers SET balance = balance - ? WHERE name = ?",
-      [paidTotal, name]
-    );
+  await pool.query(
+    `UPDATE borrowers SET total_due=total_due-? WHERE id=?`,
+    [amount, borrower_id]
+  );
 
-    // Insert into payments table with payment_date = today
-    await db.query(
-      "INSERT INTO payments (borrower_name, cash, online, discount, payment_date) VALUES (?,?,?,?,CURDATE())",
-      [name, paidCash || 0, paidOnline || 0, paidDiscount || 0]
-    );
+  await pool.query(
+    `DELETE FROM borrowers WHERE total_due<=0`
+  );
 
-    // Remove fully paid borrowers
-    await db.query("DELETE FROM borrowers WHERE balance <= 0");
-
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-  }
+  return Response.json({ success: true });
 }
