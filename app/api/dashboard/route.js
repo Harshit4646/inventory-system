@@ -3,33 +3,33 @@ import { getDB } from "@/db/connection";
 export async function GET() {
   const db = getDB();
 
-  const [daily] = await db.query(`
-    SELECT 
-      IFNULL(SUM(CASE WHEN payment_type='CASH' THEN total_amount END),0) AS cash,
-      IFNULL(SUM(CASE WHEN payment_type='ONLINE' THEN total_amount END),0) AS online,
-      IFNULL(SUM(CASE WHEN payment_type='BORROW' THEN total_amount END),0) AS borrow
+  const [[dailySales]] = await db.query(`
+    SELECT
+      SUM(CASE WHEN payment_type='CASH' THEN total_amount ELSE 0 END) cash,
+      SUM(CASE WHEN payment_type='ONLINE' THEN total_amount ELSE 0 END) online,
+      SUM(CASE WHEN payment_type='BORROW' THEN total_amount ELSE 0 END) borrow
     FROM sales
-    WHERE DATE(sale_date) = CURDATE()
+    WHERE sale_date = CURDATE()
   `);
 
-  const [monthly] = await db.query(`
-    SELECT 
-      IFNULL(SUM(CASE WHEN payment_type='CASH' THEN total_amount END),0) AS cash,
-      IFNULL(SUM(CASE WHEN payment_type='ONLINE' THEN total_amount END),0) AS online,
-      IFNULL(SUM(CASE WHEN payment_type='BORROW' THEN total_amount END),0) AS borrow
+  const [[monthlySales]] = await db.query(`
+    SELECT
+      SUM(CASE WHEN payment_type='CASH' THEN total_amount ELSE 0 END) cash,
+      SUM(CASE WHEN payment_type='ONLINE' THEN total_amount ELSE 0 END) online,
+      SUM(CASE WHEN payment_type='BORROW' THEN total_amount ELSE 0 END) borrow
     FROM sales
     WHERE MONTH(sale_date)=MONTH(CURDATE())
     AND YEAR(sale_date)=YEAR(CURDATE())
   `);
 
-  const [borrowPaymentsDaily] = await db.query(`
-    SELECT IFNULL(SUM(amount),0) AS paid
+  const [[dailyBorrowPaid]] = await db.query(`
+    SELECT SUM(amount) paid
     FROM borrower_payments
-    WHERE DATE(payment_date)=CURDATE()
+    WHERE payment_date = CURDATE()
   `);
 
-  const [borrowPaymentsMonthly] = await db.query(`
-    SELECT IFNULL(SUM(amount),0) AS paid
+  const [[monthlyBorrowPaid]] = await db.query(`
+    SELECT SUM(amount) paid
     FROM borrower_payments
     WHERE MONTH(payment_date)=MONTH(CURDATE())
     AND YEAR(payment_date)=YEAR(CURDATE())
@@ -37,12 +37,16 @@ export async function GET() {
 
   return Response.json({
     daily: {
-      ...daily[0],
-      borrow_paid: borrowPaymentsDaily[0].paid
+      cash: dailySales.cash || 0,
+      online: dailySales.online || 0,
+      borrow: dailySales.borrow || 0,
+      borrow_paid: dailyBorrowPaid.paid || 0
     },
     monthly: {
-      ...monthly[0],
-      borrow_paid: borrowPaymentsMonthly[0].paid
+      cash: monthlySales.cash || 0,
+      online: monthlySales.online || 0,
+      borrow: monthlySales.borrow || 0,
+      borrow_paid: monthlyBorrowPaid.paid || 0
     }
   });
 }
