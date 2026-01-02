@@ -7,33 +7,33 @@ export async function POST(req) {
   let borrowerId = null;
 
   if (payment_type === "BORROW") {
-    const [existing] = await db.query(
+    const [b] = await db.query(
       "SELECT id FROM borrowers WHERE name=?",
       [borrower_name]
     );
 
-    if (existing.length) {
-      borrowerId = existing[0].id;
-    } else {
-      const [res] = await db.query(
-        "INSERT INTO borrowers (name) VALUES (?)",
-        [borrower_name]
-      );
-      borrowerId = res.insertId;
-    }
+    borrowerId = b.length
+      ? b[0].id
+      : (await db.query(
+          "INSERT INTO borrowers (name) VALUES (?)",
+          [borrower_name]
+        ))[0].insertId;
   }
 
-  let total = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const total = items.reduce(
+    (sum, i) => sum + i.quantity * i.price,
+    0
+  );
 
-  const [saleRes] = await db.query(
+  const [sale] = await db.query(
     "INSERT INTO sales (sale_date,total_amount,payment_type,borrower_id) VALUES (?,?,?,?)",
     [sale_date, total, payment_type, borrowerId]
   );
 
   for (const item of items) {
     await db.query(
-      "INSERT INTO sale_items (sale_id,product_id,quantity,price) VALUES (?,?,?,?)",
-      [saleRes.insertId, item.product_id, item.quantity, item.price]
+      "INSERT INTO sale_items (sale_id,stock_id,product_id,quantity,price) VALUES (?,?,?,?,?)",
+      [sale.insertId, item.stock_id, item.product_id, item.quantity, item.price]
     );
 
     await db.query(
