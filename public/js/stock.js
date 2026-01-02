@@ -1,55 +1,39 @@
-import { getStock, addStock } from "./api.js";
-
-const stockTable = document.getElementById("stockTable");
-const searchInput = document.getElementById("stockSearch");
-const addForm = document.getElementById("addStockForm");
-
 let stockData = [];
 
-// Fetch and render stock
-async function loadStock() {
-  stockData = await getStock();
-  renderStock(stockData);
-}
-
-function renderStock(data) {
-  stockTable.innerHTML = "";
-  data.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${item.name}</td>
-      <td>${item.price}</td>
-      <td>${item.quantity}</td>
-      <td>${item.expiry}</td>
-    `;
-    stockTable.appendChild(tr);
+fetch("/api/stock")
+  .then(r => r.json())
+  .then(d => {
+    stockData = d;
+    render(d);
   });
+
+function render(data) {
+  document.getElementById("stockTable").innerHTML =
+    `<tr><th>Name</th><th>Price</th><th>Qty</th><th>Expiry</th></tr>` +
+    data.map(s => `
+      <tr>
+        <td>${s.name}</td>
+        <td>${s.price}</td>
+        <td>${s.quantity}</td>
+        <td>${s.expiry_date}</td>
+      </tr>
+    `).join("");
 }
 
-// Search function
-searchInput.addEventListener("input", (e) => {
-  const filtered = stockData.filter(item =>
-    item.name.toLowerCase().includes(e.target.value.toLowerCase())
-  );
-  renderStock(filtered);
-});
+document.getElementById("search").oninput = e => {
+  const v = e.target.value.toLowerCase();
+  render(stockData.filter(s => s.name.toLowerCase().includes(v)));
+};
 
-// Add stock
-addForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const formData = new FormData(addForm);
-  const item = {
-    name: formData.get("name"),
-    price: parseInt(formData.get("price")),
-    quantity: parseInt(formData.get("quantity")),
-    expiry: formData.get("expiry")
-  };
-  const res = await addStock(item);
-  if (res && res.success) {
-    loadStock();
-    addForm.reset();
-  }
-});
-
-// Initial load
-loadStock();
+function addStock() {
+  fetch("/api/stock", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: name.value,
+      price: price.value,
+      quantity: qty.value,
+      expiry_date: expiry.value
+    })
+  }).then(() => location.reload());
+}
