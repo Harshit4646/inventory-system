@@ -1,26 +1,44 @@
-import { db } from "@/lib/db";
+import pool from "../../../../db/connection";
 
+export const dynamic = "force-dynamic";
+
+/* GET stock */
 export async function GET() {
-  try {
-    const [rows] = await db.query("SELECT * FROM stock ORDER BY name ASC, expiry ASC");
-    return new Response(JSON.stringify(rows), { status: 200 });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-  }
+  const [rows] = await pool.query(`
+    SELECT s.id, p.name, s.price, s.quantity, s.expiry_date
+    FROM stock s
+    JOIN products p ON p.id = s.product_id
+    WHERE s.quantity > 0
+    ORDER BY p.name
+  `);
+  return Response.json(rows);
 }
 
+/* ADD stock */
 export async function POST(req) {
-  try {
-    const { name, price, quantity, expiry } = await req.json();
+  const { name, price, quantity, expiry_date } = await req.json();
 
-    // Insert new stock entry
-    await db.query(
-      "INSERT INTO stock (name, price, quantity, expiry) VALUES (?,?,?,?)",
-      [name, price, quantity, expiry]
+  let [[product]] = await pool.query(
+    "SELECT id FROM products WHERE name=?",
+    [name]
+  );
+
+  let productId;
+  if (!product) {
+    const [res] = await pool.query(
+      "INSERT INTO products(name) VALUES(?)",
+      [name]
     );
-
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    productId = res.insertId;
+  } else {
+    productId = product.id;
   }
+
+  await pool.query(
+    `INSERT INTO stock(product_id,price,quantity,expiry_date)
+     VALUES(?,?,?,?)`,
+    [productId, price, quantity, expiry_date]
+  );
+
+  return Response.json({ success: true });
 }
