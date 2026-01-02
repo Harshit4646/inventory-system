@@ -2,20 +2,25 @@
 <html>
 <head>
   <title>Borrowers</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
+  <h1>Borrowers</h1>
   <nav>
-    <a href="/index.html">Dashboard</a>
+    <button onclick="location.href='index.html'">Dashboard</button>
+    <button onclick="location.href='sales.html'">Sales</button>
   </nav>
 </header>
 
-<div class="container">
-  <table id="borrowers"></table>
+<main>
+<div class="card">
+  <h2>Borrower List</h2>
+  <div id="borrowerList"></div>
 </div>
+</main>
 
-<script src="/js/borrowers.js"></script>
+<script src="borrowers.js"></script>
 </body>
 </html>
