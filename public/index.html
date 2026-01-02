@@ -1,26 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Dashboard</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <header>
+    <h1>Inventory Management System</h1>
+    <nav>
+      <button onclick="goPage('dashboard')">Dashboard</button>
+      <button onclick="goPage('stock')">Stock</button>
+      <button onclick="goPage('sales')">Sales</button>
+      <button onclick="goPage('borrowers')">Borrowers</button>
+      <button onclick="goPage('expired')">Expired</button>
+    </nav>
+  </header>
 
-<header>
-  <nav>
-    <a href="/index.html">Dashboard</a>
-    <a href="/stock.html">Stock</a>
-    <a href="/sales.html">Sales</a>
-    <a href="/borrowers.html">Borrowers</a>
-    <a href="/expired.html">Expired</a>
-  </nav>
-</header>
+  <main id="main-content">
+    <!-- Dashboard content will load here -->
+  </main>
 
-<div class="container">
-  <div class="card" id="daily"></div>
-  <div class="card" id="monthly"></div>
-</div>
-
-<script src="/js/dashboard.js"></script>
+  <script src="dashboard.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
