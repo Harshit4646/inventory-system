@@ -2,23 +2,16 @@ import { getDB } from "@/db/connection";
 
 export async function GET() {
   const db = getDB();
-  const [rows] = await db.query(`
-    SELECT s.id, p.name, s.quantity, s.expiry_date
-    FROM stock s
-    JOIN products p ON p.id = s.product_id
-    ORDER BY p.name
-  `);
+  const [rows] = await db.query("SELECT * FROM products ORDER BY name");
   return Response.json(rows);
 }
 
 export async function POST(req) {
-  const { product_id, quantity, expiry_date } = await req.json();
-  const db = getDB();
+  const { name } = await req.json();
+  if (!name) return Response.json({ error: "Name required" }, { status: 400 });
 
-  await db.query(
-    "INSERT INTO stock (product_id, quantity, expiry_date) VALUES (?,?,?)",
-    [product_id, quantity, expiry_date || null]
-  );
+  const db = getDB();
+  await db.query("INSERT IGNORE INTO products (name) VALUES (?)", [name]);
 
   return Response.json({ success: true });
 }
