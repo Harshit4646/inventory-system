@@ -1,23 +1,26 @@
-import mysql from "mysql2/promise";
+import { Pool } from "pg";
+
 export const dynamic = "force-dynamic";
-/* ---------- DB CONNECTION (Railway MySQL) ---------- */
-let pool;
 
-function getDB() {
-  if (!pool) {
-    pool = mysql.createPool(process.env.DATABASE_URL);
-  }
-  return pool;
-}
+/* ---------- DB CONNECTION (Neon PostgreSQL) ---------- */
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
-/* ---------- API ROUTE: STOCK ---------- */
+/* ---------- API ROUTE: GET STOCK ---------- */
 export async function GET() {
-  try {
-    const db = getDB();
+  const client = await pool.connect();
 
-    const result = await db.query(
+  try {
+    const result = await client.query(
       `
-      SELECT s.id, p.name, s.quantity, s.price, s.expiry_date
+      SELECT 
+        s.id,
+        p.name,
+        s.quantity,
+        s.price,
+        s.expiry_date
       FROM stock s
       JOIN products p ON p.id = s.product_id
       WHERE s.quantity > 0
@@ -28,20 +31,25 @@ export async function GET() {
     return new Response(JSON.stringify(result.rows), {
       headers: { "Content-Type": "application/json" },
     });
+
   } catch (error) {
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500 }
     );
+  } finally {
+    client.release();
   }
 }
 
+/* ---------- API ROUTE: ADD STOCK ---------- */
 export async function POST(req) {
+  const client = await pool.connect();
+
   try {
     const { product_id, quantity, price, expiry_date } = await req.json();
-    const db = getDB();
 
-    await db.query(
+    await client.query(
       `
       INSERT INTO stock (product_id, quantity, price, expiry_date)
       VALUES ($1, $2, $3, $4)
@@ -53,12 +61,13 @@ export async function POST(req) {
       JSON.stringify({ success: true }),
       { headers: { "Content-Type": "application/json" } }
     );
+
   } catch (error) {
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500 }
     );
+  } finally {
+    client.release();
   }
-}
-
-
+      }
