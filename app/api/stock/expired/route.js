@@ -1,26 +1,65 @@
-import { getDB } from "@/db/connection";
+import { Pool } from "pg";
 
+/* ---------- DB CONNECTION ---------- */
+let pool;
+
+function getDB() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+  return pool;
+}
+
+/* ---------- API ROUTE: EXPIRED STOCK ---------- */
 export async function GET() {
   const db = getDB();
 
-  await db.query(`
-    INSERT INTO expired_stock (product_id, quantity, price, expiry_date)
-    SELECT product_id, quantity, price, expiry_date
-    FROM stock
-    WHERE expiry_date IS NOT NULL AND expiry_date < CURDATE()
-  `);
+  try {
+    /* ---------- BEGIN TRANSACTION ---------- */
+    await db.query("BEGIN");
 
-  await db.query(`
-    DELETE FROM stock
-    WHERE expiry_date IS NOT NULL AND expiry_date < CURDATE()
-  `);
+    /* ---------- MOVE EXPIRED STOCK ---------- */
+    await db.query(
+      `
+      INSERT INTO expired_stock (product_id, quantity, price, expiry_date, expired_at)
+      SELECT product_id, quantity, price, expiry_date, CURRENT_TIMESTAMP
+      FROM stock
+      WHERE expiry_date IS NOT NULL AND expiry_date < CURRENT_DATE
+      `
+    );
 
-  const [rows] = await db.query(`
-    SELECT e.id, p.name, e.quantity, e.price, e.expiry_date
-    FROM expired_stock e
-    JOIN products p ON p.id=e.product_id
-    ORDER BY e.expired_at DESC
-  `);
+    /* ---------- DELETE FROM STOCK ---------- */
+    await db.query(
+      `
+      DELETE FROM stock
+      WHERE expiry_date IS NOT NULL AND expiry_date < CURRENT_DATE
+      `
+    );
 
-  return Response.json(rows);
+    /* ---------- FETCH ALL EXPIRED STOCK ---------- */
+    const result = await db.query(
+      `
+      SELECT e.id, p.name, e.quantity, e.price, e.expiry_date, e.expired_at
+      FROM expired_stock e
+      JOIN products p ON p.id = e.product_id
+      ORDER BY e.expired_at DESC
+      `
+    );
+
+    /* ---------- COMMIT ---------- */
+    await db.query("COMMIT");
+
+    return new Response(JSON.stringify(result.rows), {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    await db.query("ROLLBACK");
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500 }
+    );
+  }
 }
