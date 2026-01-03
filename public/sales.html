@@ -1,46 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Sales</title>
-  <link rel="stylesheet" href="css/style.css">
+  <title>Create Sale</title>
 </head>
 <body>
 
-<header>
-  <h1>Sales</h1>
-  <nav>
-    <button onclick="location.href='index.html'">Dashboard</button>
-    <button onclick="location.href='stock.html'">Stock</button>
-    <button onclick="location.href='borrowers.html'">Borrowers</button>
-    <button onclick="location.href='sales-bills.html'">Sales Bills</button>
-  </nav>
-</header>
+<h2>Create Sale</h2>
 
-<main>
+<label>Payment Type</label>
+<select id="paymentType">
+  <option value="CASH">Cash</option>
+  <option value="ONLINE">Online</option>
+  <option value="BORROW">Borrow</option>
+</select>
 
-<div class="card">
-  <h2>New Sale</h2>
+<br><br>
 
-  <input type="text" id="saleProductSearch" placeholder="Search product">
-  <div id="saleProductList"></div>
+<input id="borrowerName" placeholder="Borrower name (if borrow)" />
 
-  <input type="number" id="saleQty" placeholder="Quantity">
+<hr>
 
-  <select id="paymentType">
-    <option value="cash">Cash</option>
-    <option value="online">Online</option>
-    <option value="borrow">Borrow</option>
-  </select>
+<h3>Select Product</h3>
+<div id="stockList"></div>
 
-  <input type="text" id="borrowerName" placeholder="Borrower name (only if borrow)">
+<p>Selected: <b id="selectedProduct">None</b></p>
 
-  <button class="action-btn" onclick="addSale()">Add Sale</button>
-</div>
+<input type="number" id="quantity" placeholder="Quantity" />
+<button onclick="addProduct()">Add Product</button>
 
-</main>
+<hr>
 
-<script src="js/sales.js"></script>
+<h3>Bill</h3>
+<table border="1">
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th>Qty</th>
+      <th>Price</th>
+      <th>Total</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="billTable"></tbody>
+</table>
+
+<h3>Total: ₹<span id="total">0</span></h3>
+
+<button onclick="saveSale()">Save Bill</button>
+
+<script src="/js/sales.js"></script>
 </body>
 </html>
-
-
