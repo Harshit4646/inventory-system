@@ -1,57 +1,58 @@
+-- Products
 CREATE TABLE products (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) UNIQUE NOT NULL
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL
 );
 
+-- Stock
 CREATE TABLE stock (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  product_id INT NOT NULL,
-  quantity INT NOT NULL,
-  price DECIMAL(10,2) NOT NULL,
-  expiry_date DATE,
-  FOREIGN KEY (product_id) REFERENCES products(id)
+    id SERIAL PRIMARY KEY,
+    product_id INT REFERENCES products(id),
+    quantity INT NOT NULL,
+    price NUMERIC(10,2) NOT NULL,
+    expiry_date DATE
 );
 
+-- Expired stock
 CREATE TABLE expired_stock (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  product_id INT NOT NULL,
-  quantity INT NOT NULL,
-  price DECIMAL(10,2) NOT NULL,
-  expiry_date DATE NOT NULL,
-  expired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    product_id INT REFERENCES products(id),
+    quantity INT NOT NULL,
+    price NUMERIC(10,2) NOT NULL,
+    expiry_date DATE,
+    expired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Borrowers
 CREATE TABLE borrowers (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) UNIQUE NOT NULL
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL
 );
 
-CREATE TABLE sales (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  sale_date DATE NOT NULL,
-  total_amount DECIMAL(10,2) NOT NULL,
-  payment_type ENUM('CASH','ONLINE','BORROW') NOT NULL,
-  borrower_id INT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (borrower_id) REFERENCES borrowers(id)
-);
-
-CREATE TABLE sale_items (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  sale_id INT NOT NULL,
-  stock_id INT NOT NULL,
-  product_id INT NOT NULL,
-  quantity INT NOT NULL,
-  price DECIMAL(10,2) NOT NULL,
-  FOREIGN KEY (sale_id) REFERENCES sales(id)
-);
-
+-- Borrower payments
 CREATE TABLE borrower_payments (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  borrower_id INT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
-  payment_mode ENUM('CASH','ONLINE') NOT NULL,
-  payment_date DATE NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (borrower_id) REFERENCES borrowers(id)
+    id SERIAL PRIMARY KEY,
+    borrower_id INT REFERENCES borrowers(id),
+    amount NUMERIC(10,2) NOT NULL,
+    payment_mode VARCHAR(20) NOT NULL,
+    payment_date DATE DEFAULT CURRENT_DATE
+);
+
+-- Sales
+CREATE TABLE sales (
+    id SERIAL PRIMARY KEY,
+    sale_date DATE DEFAULT CURRENT_DATE,
+    total_amount NUMERIC(10,2) NOT NULL,
+    payment_type VARCHAR(20) NOT NULL,
+    borrower_id INT REFERENCES borrowers(id)
+);
+
+-- Sale items
+CREATE TABLE sale_items (
+    id SERIAL PRIMARY KEY,
+    sale_id INT REFERENCES sales(id) ON DELETE CASCADE,
+    stock_id INT REFERENCES stock(id),
+    product_id INT REFERENCES products(id),
+    quantity INT NOT NULL,
+    price NUMERIC(10,2) NOT NULL
 );
