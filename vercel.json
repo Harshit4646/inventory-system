@@ -1,21 +1,15 @@
 {
   "version": 2,
-
   "builds": [
     {
-      "src": "package.json",
+      "src": "next.config.js",
       "use": "@vercel/next"
     }
   ],
-
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    }
+  "env": {
+    "DATABASE_URL": "@database_url"
+  },
+  "rewrites": [
+    { "source": "/api/:match*", "destination": "/api/:match*" }
   ]
 }
