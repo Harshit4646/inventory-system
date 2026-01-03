@@ -1,11 +1,16 @@
-import mysql from "mysql2/promise";
+import { Pool } from "pg";
+
 export const dynamic = "force-dynamic";
-/* ---------- DB CONNECTION (Railway MySQL) ---------- */
+
+/* ---------- DB CONNECTION (Neon PostgreSQL) ---------- */
 let pool;
 
 function getDB() {
   if (!pool) {
-    pool = mysql.createPool(process.env.DATABASE_URL);
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
   }
   return pool;
 }
@@ -15,38 +20,42 @@ export async function DELETE(_, { params }) {
   const db = getDB();
   const saleId = params.id;
 
+  const client = await db.connect();
+
   try {
     /* ---------- BEGIN TRANSACTION ---------- */
-    await db.query("BEGIN");
+    await client.query("BEGIN");
 
     /* ---------- GET SALE ITEMS ---------- */
-    const itemsResult = await db.query(
-      `SELECT * FROM sale_items WHERE sale_id = $1`,
+    const itemsResult = await client.query(
+      `SELECT quantity, stock_id FROM sale_items WHERE sale_id = $1`,
       [saleId]
     );
 
     /* ---------- ROLLBACK STOCK ---------- */
-    for (const i of itemsResult.rows) {
-      await db.query(
-        `UPDATE stock SET quantity = quantity + $1 WHERE id = $2`,
-        [i.quantity, i.stock_id]
+    for (const item of itemsResult.rows) {
+      await client.query(
+        `UPDATE stock
+         SET quantity = quantity + $1
+         WHERE id = $2`,
+        [item.quantity, item.stock_id]
       );
     }
 
     /* ---------- DELETE SALE ITEMS ---------- */
-    await db.query(
+    await client.query(
       `DELETE FROM sale_items WHERE sale_id = $1`,
       [saleId]
     );
 
     /* ---------- DELETE SALE ---------- */
-    await db.query(
+    await client.query(
       `DELETE FROM sales WHERE id = $1`,
       [saleId]
     );
 
-    /* ---------- COMMIT TRANSACTION ---------- */
-    await db.query("COMMIT");
+    /* ---------- COMMIT ---------- */
+    await client.query("COMMIT");
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -54,12 +63,14 @@ export async function DELETE(_, { params }) {
     );
 
   } catch (error) {
-    /* ---------- ROLLBACK ON ERROR ---------- */
-    await db.query("ROLLBACK");
+    await client.query("ROLLBACK");
 
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500 }
     );
+
+  } finally {
+    client.release();
   }
-}
+      }
