@@ -1,11 +1,16 @@
-import mysql from "mysql2/promise";
+import { Pool } from "pg";
+
 export const dynamic = "force-dynamic";
-/* ---------- DB CONNECTION (Railway MySQL) ---------- */
+
+/* ---------- DB CONNECTION (Neon PostgreSQL) ---------- */
 let pool;
 
 function getDB() {
   if (!pool) {
-    pool = mysql.createPool(process.env.DATABASE_URL);
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
   }
   return pool;
 }
@@ -15,18 +20,19 @@ export async function GET() {
   try {
     const db = getDB();
 
-    /* PostgreSQL: last 7 days from today */
-    const result = await db.query(
-      `
-      SELECT id, sale_date, total_amount, payment_type
+    const result = await db.query(`
+      SELECT 
+        id,
+        sale_date,
+        total_amount,
+        payment_type
       FROM sales
       WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days'
       ORDER BY sale_date DESC
-      `
-    );
+    `);
 
     return new Response(JSON.stringify(result.rows), {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" }
     });
 
   } catch (error) {
@@ -35,4 +41,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+      }
