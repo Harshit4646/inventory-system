@@ -1,25 +1,23 @@
-import mysql from "mysql2/promise";
-export const dynamic = "force-dynamic";
-/* ---------- DB CONNECTION (Railway MySQL) ---------- */
-let pool;
+import { Pool } from "pg";
 
-function getDB() {
-  if (!pool) {
-    pool = mysql.createPool(process.env.DATABASE_URL);
-  }
-  return pool;
-}
+export const dynamic = "force-dynamic";
+
+/* ---------- DB CONNECTION (Neon PostgreSQL) ---------- */
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 /* ---------- API ROUTE: EDIT SALE ---------- */
 export async function PUT(req, { params }) {
-  const db = getDB();
   const saleId = params.id;
+  const client = await pool.connect();
 
   try {
     const { items, total_amount } = await req.json();
 
     /* ---------- CHECK 7-DAY WINDOW ---------- */
-    const saleResult = await db.query(
+    const saleResult = await client.query(
       `SELECT sale_date FROM sales WHERE id = $1`,
       [saleId]
     );
@@ -42,30 +40,30 @@ export async function PUT(req, { params }) {
     }
 
     /* ---------- BEGIN TRANSACTION ---------- */
-    await db.query("BEGIN");
+    await client.query("BEGIN");
 
     /* ---------- ROLLBACK OLD ITEMS ---------- */
-    const oldItemsResult = await db.query(
+    const oldItemsResult = await client.query(
       `SELECT * FROM sale_items WHERE sale_id = $1`,
       [saleId]
     );
 
     for (const i of oldItemsResult.rows) {
-      await db.query(
+      await client.query(
         `UPDATE stock SET quantity = quantity + $1 WHERE id = $2`,
         [i.quantity, i.stock_id]
       );
     }
 
     /* ---------- DELETE OLD SALE ITEMS ---------- */
-    await db.query(
+    await client.query(
       `DELETE FROM sale_items WHERE sale_id = $1`,
       [saleId]
     );
 
     /* ---------- INSERT NEW SALE ITEMS + UPDATE STOCK ---------- */
     for (const i of items) {
-      await db.query(
+      await client.query(
         `
         INSERT INTO sale_items
           (sale_id, stock_id, product_id, quantity, price)
@@ -75,20 +73,20 @@ export async function PUT(req, { params }) {
         [saleId, i.stock_id, i.product_id, i.quantity, i.price]
       );
 
-      await db.query(
+      await client.query(
         `UPDATE stock SET quantity = quantity - $1 WHERE id = $2`,
         [i.quantity, i.stock_id]
       );
     }
 
     /* ---------- UPDATE SALE TOTAL ---------- */
-    await db.query(
+    await client.query(
       `UPDATE sales SET total_amount = $1 WHERE id = $2`,
       [total_amount, saleId]
     );
 
-    /* ---------- COMMIT TRANSACTION ---------- */
-    await db.query("COMMIT");
+    /* ---------- COMMIT ---------- */
+    await client.query("COMMIT");
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -96,10 +94,17 @@ export async function PUT(req, { params }) {
     );
 
   } catch (error) {
-    await db.query("ROLLBACK");
+    await client.query("ROLLBACK");
+
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500 }
+    );
+
+  } finally {
+    client.release();
+  }
+                              }      { status: 500 }
     );
   }
 }
