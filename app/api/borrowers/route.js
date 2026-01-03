@@ -1,11 +1,16 @@
-import mysql from "mysql2/promise";
+import { Pool } from "pg";
+
 export const dynamic = "force-dynamic";
-/* ---------- DB CONNECTION (Railway MySQL) ---------- */
+
+/* ---------- DB CONNECTION (Neon PostgreSQL) ---------- */
 let pool;
 
 function getDB() {
   if (!pool) {
-    pool = mysql.createPool(process.env.DATABASE_URL);
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
   }
   return pool;
 }
@@ -27,7 +32,7 @@ export async function GET() {
       ) AS due
     FROM borrowers b
     JOIN sales s ON s.borrower_id = b.id
-    GROUP BY b.id
+    GROUP BY b.id, b.name
     HAVING 
       SUM(s.total_amount)
       - COALESCE(
@@ -38,9 +43,5 @@ export async function GET() {
       ) > 0
   `);
 
-  return new Response(JSON.stringify(rows), {
-    headers: { "Content-Type": "application/json" }
-  });
+  return Response.json(rows);
 }
-
-
