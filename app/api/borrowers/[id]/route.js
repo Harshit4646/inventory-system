@@ -1,11 +1,16 @@
-import mysql from "mysql2/promise";
+import { Pool } from "pg";
+
 export const dynamic = "force-dynamic";
-/* ---------- DB CONNECTION (Railway MySQL) ---------- */
+
+/* ---------- DB CONNECTION (Neon PostgreSQL) ---------- */
 let pool;
 
 function getDB() {
   if (!pool) {
-    pool = mysql.createPool(process.env.DATABASE_URL);
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
   }
   return pool;
 }
@@ -48,13 +53,10 @@ export async function GET(_, { params }) {
       [borrowerId]
     );
 
-    return new Response(
-      JSON.stringify({
-        sales: salesResult.rows,
-        payments: paymentsResult.rows
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
+    return Response.json({
+      sales: salesResult.rows,
+      payments: paymentsResult.rows
+    });
 
   } catch (error) {
     return new Response(
