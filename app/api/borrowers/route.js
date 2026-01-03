@@ -1,14 +1,11 @@
-import { Pool } from "pg";
+import mysql from "mysql2/promise";
 
-/* ---------- DB CONNECTION (Supabase PostgreSQL) ---------- */
+/* ---------- DB CONNECTION (Railway MySQL) ---------- */
 let pool;
 
 function getDB() {
   if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
-    });
+    pool = mysql.createPool(process.env.DATABASE_URL);
   }
   return pool;
 }
@@ -45,3 +42,4 @@ export async function GET() {
     headers: { "Content-Type": "application/json" }
   });
 }
+
