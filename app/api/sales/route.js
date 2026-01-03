@@ -1,5 +1,5 @@
 import mysql from "mysql2/promise";
-
+export const dynamic = "force-dynamic";
 /* ---------- DB CONNECTION (Railway MySQL) ---------- */
 let pool;
 
@@ -90,4 +90,5 @@ export async function POST(req) {
     );
   }
 }
+
 
