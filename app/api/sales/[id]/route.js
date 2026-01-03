@@ -1,23 +1,68 @@
-import { getDB } from "@/db/connection";
+import { Pool } from "pg";
 
+/* ---------- DB CONNECTION ---------- */
+let pool;
+
+function getDB() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+  return pool;
+}
+
+/* ---------- API ROUTE: DELETE SALE ---------- */
 export async function DELETE(_, { params }) {
   const db = getDB();
   const saleId = params.id;
 
-  const [items] = await db.query(
-    "SELECT * FROM sale_items WHERE sale_id=?",
-    [saleId]
-  );
+  try {
+    /* ---------- BEGIN TRANSACTION ---------- */
+    await db.query("BEGIN");
 
-  for (const i of items) {
+    /* ---------- GET SALE ITEMS ---------- */
+    const itemsResult = await db.query(
+      `SELECT * FROM sale_items WHERE sale_id = $1`,
+      [saleId]
+    );
+
+    /* ---------- ROLLBACK STOCK ---------- */
+    for (const i of itemsResult.rows) {
+      await db.query(
+        `UPDATE stock SET quantity = quantity + $1 WHERE id = $2`,
+        [i.quantity, i.stock_id]
+      );
+    }
+
+    /* ---------- DELETE SALE ITEMS ---------- */
     await db.query(
-      "UPDATE stock SET quantity = quantity + ? WHERE id=?",
-      [i.quantity, i.stock_id]
+      `DELETE FROM sale_items WHERE sale_id = $1`,
+      [saleId]
+    );
+
+    /* ---------- DELETE SALE ---------- */
+    await db.query(
+      `DELETE FROM sales WHERE id = $1`,
+      [saleId]
+    );
+
+    /* ---------- COMMIT TRANSACTION ---------- */
+    await db.query("COMMIT");
+
+    return new Response(
+      JSON.stringify({ success: true }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    /* ---------- ROLLBACK ON ERROR ---------- */
+    await db.query("ROLLBACK");
+
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500 }
     );
   }
-
-  await db.query("DELETE FROM sale_items WHERE sale_id=?", [saleId]);
-  await db.query("DELETE FROM sales WHERE id=?", [saleId]);
-
-  return Response.json({ success: true });
 }
