@@ -1,53 +1,214 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Create Sale</title>
+  <meta charset="UTF-8">
+  <title>Sales</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input, select, button { margin: 5px; padding: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    table, th, td { border: 1px solid #ccc; }
+    th, td { padding: 8px; text-align: left; }
+    .expired { background-color: #fdd; }
+    .near-expiry { background-color: #ffd; }
+    .total { font-weight: bold; }
+    .btn { padding: 5px 10px; cursor: pointer; }
+  </style>
 </head>
 <body>
+  <h1>Sales</h1>
 
-<h2>Create Sale</h2>
+  <!-- Borrower selection -->
+  <label for="borrowerSearch">Customer Name:</label>
+  <input type="text" id="borrowerSearch" placeholder="Enter borrower name">
+  <div id="borrowerSuggestions" style="border:1px solid #ccc;"></div>
 
-<label>Payment Type</label>
-<select id="paymentType">
-  <option value="CASH">Cash</option>
-  <option value="ONLINE">Online</option>
-  <option value="BORROW">Borrow</option>
-</select>
+  <!-- Product selection -->
+  <label for="productSearch">Product:</label>
+  <input type="text" id="productSearch" placeholder="Search product">
+  <div id="productSuggestions" style="border:1px solid #ccc;"></div>
 
-<br><br>
+  <label for="price">Price:</label>
+  <input type="number" id="price" min="0" step="0.01">
+  <label for="quantity">Quantity:</label>
+  <input type="number" id="quantity" min="1">
+  <label for="expiry">Expiry Date:</label>
+  <input type="date" id="expiry">
+  <button class="btn" onclick="addProductToCart()">Add Product</button>
 
-<input id="borrowerName" placeholder="Borrower name (if borrow)" />
+  <h2>Cart</h2>
+  <table id="cartTable">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Expiry</th>
+        <th>Total</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4" class="total">Grand Total</td>
+        <td colspan="2" id="grandTotal">0</td>
+      </tr>
+    </tfoot>
+  </table>
 
-<hr>
+  <label for="paymentType">Payment Type:</label>
+  <select id="paymentType">
+    <option value="CASH">Cash</option>
+    <option value="ONLINE">Online</option>
+    <option value="BORROW">Borrow</option>
+  </select>
 
-<h3>Select Product</h3>
-<div id="stockList"></div>
+  <button class="btn" onclick="saveSale()">Save Sale</button>
 
-<p>Selected: <b id="selectedProduct">None</b></p>
+  <script>
+    let borrowersCache = [];
+    let productsCache = [];
+    let cart = [];
+    let selectedBorrowerId = null;
+    let selectedProductId = null;
 
-<input type="number" id="quantity" placeholder="Quantity" />
-<button onclick="addProduct()">Add Product</button>
+    /* ---------------- BORROWER SEARCH ---------------- */
+    document.getElementById('borrowerSearch').addEventListener('input', async e => {
+      const q = e.target.value;
+      if (!q) return;
+      const res = await fetch(`/api/borrowers?search=${q}`);
+      borrowersCache = await res.json();
+      const box = document.getElementById('borrowerSuggestions');
+      box.innerHTML = '';
+      borrowersCache.forEach(b => {
+        const div = document.createElement('div');
+        div.textContent = b.name;
+        div.style.cursor = 'pointer';
+        div.onclick = () => {
+          document.getElementById('borrowerSearch').value = b.name;
+          selectedBorrowerId = b.id;
+          box.innerHTML = '';
+        };
+        box.appendChild(div);
+      });
+    });
 
-<hr>
+    /* ---------------- PRODUCT SEARCH ---------------- */
+    document.getElementById('productSearch').addEventListener('input', async e => {
+      const q = e.target.value;
+      if (!q) return;
+      const res = await fetch(`/api/products?search=${q}`);
+      productsCache = await res.json();
+      const box = document.getElementById('productSuggestions');
+      box.innerHTML = '';
+      productsCache.forEach(p => {
+        const div = document.createElement('div');
+        div.textContent = p.name;
+        div.style.cursor = 'pointer';
+        div.onclick = () => {
+          document.getElementById('productSearch').value = p.name;
+          selectedProductId = p.id;
+          box.innerHTML = '';
+        };
+        box.appendChild(div);
+      });
+    });
 
-<h3>Bill</h3>
-<table border="1">
-  <thead>
-    <tr>
-      <th>Product</th>
-      <th>Qty</th>
-      <th>Price</th>
-      <th>Total</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody id="billTable"></tbody>
-</table>
+    /* ---------------- CART LOGIC ---------------- */
+    function addProductToCart() {
+      if (!selectedProductId) { alert('Select product'); return; }
+      const name = document.getElementById('productSearch').value;
+      const price = Number(document.getElementById('price').value);
+      const quantity = Number(document.getElementById('quantity').value);
+      const expiry = document.getElementById('expiry').value;
 
-<h3>Total: ₹<span id="total">0</span></h3>
+      if (!price || !quantity) { alert('Enter price and quantity'); return; }
 
-<button onclick="saveSale()">Save Bill</button>
+      // Check if same product + price + expiry exists in cart
+      const existing = cart.find(item => 
+        item.product_id === selectedProductId &&
+        item.price === price &&
+        item.expiry === expiry
+      );
 
-<script src="/js/sales.js"></script>
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        cart.push({ product_id: selectedProductId, name, price, quantity, expiry });
+      }
+
+      renderCart();
+      resetProductInputs();
+    }
+
+    function renderCart() {
+      const tbody = document.querySelector('#cartTable tbody');
+      tbody.innerHTML = '';
+      let grandTotal = 0;
+
+      cart.forEach((item, idx) => {
+        const total = item.price * item.quantity;
+        grandTotal += total;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.name}</td>
+          <td>₹${item.price}</td>
+          <td>${item.quantity}</td>
+          <td>${item.expiry}</td>
+          <td>₹${total.toFixed(2)}</td>
+          <td><button onclick="removeFromCart(${idx})">Remove</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('grandTotal').textContent = '₹' + grandTotal.toFixed(2);
+    }
+
+    function removeFromCart(idx) {
+      cart.splice(idx, 1);
+      renderCart();
+    }
+
+    function resetProductInputs() {
+      document.getElementById('productSearch').value = '';
+      document.getElementById('price').value = '';
+      document.getElementById('quantity').value = '';
+      document.getElementById('expiry').value = '';
+      selectedProductId = null;
+    }
+
+    /* ---------------- SAVE SALE ---------------- */
+    async function saveSale() {
+      if (!cart.length) { alert('Add at least one product'); return; }
+
+      const payment_type = document.getElementById('paymentType').value;
+      const borrower_name = payment_type === 'BORROW' ? document.getElementById('borrowerSearch').value : null;
+
+      const body = {
+        items: cart,
+        total_amount: cart.reduce((sum, i) => sum + i.price*i.quantity, 0),
+        payment_type,
+        borrower_name
+      };
+
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert('Sale saved!');
+        cart = [];
+        selectedBorrowerId = null;
+        renderCart();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    }
+
+  </script>
 </body>
 </html>
