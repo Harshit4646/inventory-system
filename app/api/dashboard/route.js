@@ -1,11 +1,16 @@
-import mysql from "mysql2/promise";
+import { Pool } from "pg";
+
 export const dynamic = "force-dynamic";
-/* ---------- DB CONNECTION (Railway MySQL) ---------- */
+
+/* ---------- DB CONNECTION (Neon PostgreSQL) ---------- */
 let pool;
 
 function getDB() {
   if (!pool) {
-    pool = mysql.createPool(process.env.DATABASE_URL);
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
   }
   return pool;
 }
@@ -49,23 +54,20 @@ export async function GET() {
       WHERE DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE)
     `);
 
-    return new Response(
-      JSON.stringify({
-        daily: {
-          cash: dailySalesResult.rows[0].cash,
-          online: dailySalesResult.rows[0].online,
-          borrow: dailySalesResult.rows[0].borrow,
-          borrow_paid: dailyBorrowPaidResult.rows[0].paid
-        },
-        monthly: {
-          cash: monthlySalesResult.rows[0].cash,
-          online: monthlySalesResult.rows[0].online,
-          borrow: monthlySalesResult.rows[0].borrow,
-          borrow_paid: monthlyBorrowPaidResult.rows[0].paid
-        }
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
+    return Response.json({
+      daily: {
+        cash: dailySalesResult.rows[0].cash,
+        online: dailySalesResult.rows[0].online,
+        borrow: dailySalesResult.rows[0].borrow,
+        borrow_paid: dailyBorrowPaidResult.rows[0].paid
+      },
+      monthly: {
+        cash: monthlySalesResult.rows[0].cash,
+        online: monthlySalesResult.rows[0].online,
+        borrow: monthlySalesResult.rows[0].borrow,
+        borrow_paid: monthlyBorrowPaidResult.rows[0].paid
+      }
+    });
 
   } catch (error) {
     return new Response(
@@ -73,6 +75,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
-
-
+  }
