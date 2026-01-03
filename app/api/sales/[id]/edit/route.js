@@ -104,7 +104,4 @@ export async function PUT(req, { params }) {
   } finally {
     client.release();
   }
-                              }      { status: 500 }
-    );
-  }
 }
