@@ -1,14 +1,41 @@
-import { getDB } from "@/db/connection";
+import { Pool } from "pg";
 
+/* ---------- DB CONNECTION ---------- */
+let pool;
+
+function getDB() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+  return pool;
+}
+
+/* ---------- API ROUTE: LAST 7 DAYS SALES ---------- */
 export async function GET() {
-  const db = getDB();
+  try {
+    const db = getDB();
 
-  const [rows] = await db.query(`
-    SELECT id, sale_date, total_amount, payment_type
-    FROM sales
-    WHERE sale_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-    ORDER BY sale_date DESC
-  `);
+    /* PostgreSQL: last 7 days from today */
+    const result = await db.query(
+      `
+      SELECT id, sale_date, total_amount, payment_type
+      FROM sales
+      WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days'
+      ORDER BY sale_date DESC
+      `
+    );
 
-  return Response.json(rows);
+    return new Response(JSON.stringify(result.rows), {
+      headers: { "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500 }
+    );
+  }
 }
