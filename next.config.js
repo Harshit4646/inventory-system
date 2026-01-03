@@ -1,11 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-
-  // Needed for Vercel serverless APIs
   experimental: {
-    appDir: true
-  }
+    appDir: true, // required if using /app folder structure
+  },
 };
 
 module.exports = nextConfig;
