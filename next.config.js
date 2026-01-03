@@ -1,9 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  // REQUIRED so API routes are not prerendered at build time
+  output: "standalone",
+
   experimental: {
-    appDir: true, // required if using /app folder structure
-  },
+    appDir: true
+  }
 };
 
 module.exports = nextConfig;
