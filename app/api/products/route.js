@@ -1,11 +1,16 @@
-import mysql from "mysql2/promise";
+import { Pool } from "pg";
+
 export const dynamic = "force-dynamic";
-/* ---------- DB CONNECTION (Railway MySQL) ---------- */
+
+/* ---------- DB CONNECTION (Neon PostgreSQL) ---------- */
 let pool;
 
 function getDB() {
   if (!pool) {
-    pool = mysql.createPool(process.env.DATABASE_URL);
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
   }
   return pool;
 }
@@ -15,11 +20,13 @@ export async function GET() {
   try {
     const db = getDB();
 
-    const { rows } = await db.query(
-      `SELECT * FROM products ORDER BY name`
-    );
+    const result = await db.query(`
+      SELECT *
+      FROM products
+      ORDER BY name
+    `);
 
-    return new Response(JSON.stringify(rows), {
+    return new Response(JSON.stringify(result.rows), {
       headers: { "Content-Type": "application/json" }
     });
 
@@ -45,8 +52,8 @@ export async function POST(req) {
 
     const db = getDB();
 
-    /* 
-      PostgreSQL replacement for:
+    /*
+      PostgreSQL equivalent of:
       INSERT IGNORE INTO products (name) VALUES (?)
     */
     await db.query(
