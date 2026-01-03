@@ -1,26 +1,55 @@
-import { getDB } from "@/db/connection";
+import { Pool } from "pg";
 
-export async function POST(req) {
-  const { borrower_id, amount, payment_mode, payment_date } = await req.json();
-  const db = getDB();
+/* ---------- DB CONNECTION ---------- */
+let pool;
 
-  await db.query(
-    "INSERT INTO borrower_payments (borrower_id,amount,payment_mode,payment_date) VALUES (?,?,?,?)",
-    [borrower_id, amount, payment_mode, payment_date]
-  );
-
-  const [[due]] = await db.query(`
-    SELECT
-    SUM(s.total_amount) -
-    IFNULL((SELECT SUM(amount) FROM borrower_payments WHERE borrower_id=?),0)
-    AS due
-    FROM sales s
-    WHERE s.borrower_id=?
-  `, [borrower_id, borrower_id]);
-
-  if (!due.due || due.due <= 0) {
-    await db.query("DELETE FROM borrowers WHERE id=?", [borrower_id]);
+function getDB() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
   }
+  return pool;
+}
 
-  return Response.json({ success: true });
+/* ---------- API ROUTE ---------- */
+export async function GET() {
+  try {
+    const db = getDB();
+
+    const { rows } = await db.query(`
+      SELECT 
+        b.id,
+        b.name,
+        SUM(s.total_amount)
+        - COALESCE(
+            (SELECT SUM(amount)
+             FROM borrower_payments bp
+             WHERE bp.borrower_id = b.id),
+          0
+        ) AS due
+      FROM borrowers b
+      JOIN sales s ON s.borrower_id = b.id
+      GROUP BY b.id
+      HAVING 
+        SUM(s.total_amount)
+        - COALESCE(
+            (SELECT SUM(amount)
+             FROM borrower_payments bp
+             WHERE bp.borrower_id = b.id),
+          0
+        ) > 0
+    `);
+
+    return new Response(JSON.stringify(rows), {
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500 }
+    );
+  }
 }
