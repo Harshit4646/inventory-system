@@ -1,28 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Borrowers</title>
-  <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <title>Borrowers & Payments</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    table, th, td { border: 1px solid #ccc; }
+    th, td { padding: 8px; text-align: left; }
+    input, select, button { margin: 5px; padding: 5px; }
+  </style>
 </head>
 <body>
+  <h1>Borrowers & Payments</h1>
 
-<header>
-  <h1>Borrowers</h1>
-  <nav>
-    <button onclick="location.href='index.html'">Dashboard</button>
-    <button onclick="location.href='sales.html'">Sales</button>
-  </nav>
-</header>
+  <h2>Record Payment</h2>
+  <label for="borrowerName">Borrower Name:</label>
+  <input type="text" id="borrowerName" placeholder="Enter borrower name">
+  <label for="paymentAmount">Amount:</label>
+  <input type="number" id="paymentAmount" step="0.01" min="0">
+  <label for="paymentMode">Mode:</label>
+  <select id="paymentMode">
+    <option value="CASH">Cash</option>
+    <option value="ONLINE">Online</option>
+  </select>
+  <button onclick="addPayment()">Record Payment</button>
 
-<main>
-<div class="card">
-  <h2>Borrower List</h2>
-  <div id="borrowerList"></div>
-</div>
-</main>
+  <h2>All Borrowers & Outstanding</h2>
+  <table id="borrowerTable">
+    <thead>
+      <tr><th>Name</th><th>Outstanding</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-<script src="js/borrowers.js"></script>
+  <script>
+    async function loadBorrowers() {
+      const res = await fetch('/api/borrowers/outstanding');
+      const data = await res.json();
+      const tbody = document.querySelector('#borrowerTable tbody');
+      tbody.innerHTML = '';
+      data.forEach(b => {
+        tbody.innerHTML += `<tr><td>${b.name}</td><td>₹${b.due}</td></tr>`;
+      });
+    }
+
+    async function addPayment() {
+      const name = document.getElementById('borrowerName').value.trim();
+      const amount = Number(document.getElementById('paymentAmount').value);
+      const mode = document.getElementById('paymentMode').value;
+      if (!name || !amount) return alert('Enter name and amount');
+
+      const res = await fetch('/api/borrowers/pay', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ borrower_name: name, amount, payment_mode: mode })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert('Payment recorded!');
+        document.getElementById('borrowerName').value = '';
+        document.getElementById('paymentAmount').value = '';
+        loadBorrowers();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    }
+
+    loadBorrowers();
+  </script>
 </body>
 </html>
-
-
