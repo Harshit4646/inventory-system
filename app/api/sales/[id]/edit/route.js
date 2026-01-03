@@ -1,50 +1,108 @@
-import { getDB } from "@/db/connection";
+import { Pool } from "pg";
 
+/* ---------- DB CONNECTION ---------- */
+let pool;
+
+function getDB() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+  return pool;
+}
+
+/* ---------- API ROUTE: EDIT SALE ---------- */
 export async function PUT(req, { params }) {
   const db = getDB();
   const saleId = params.id;
-  const { items, total_amount } = await req.json();
 
-  const [[sale]] = await db.query(`
-    SELECT sale_date FROM sales WHERE id=?
-  `, [saleId]);
+  try {
+    const { items, total_amount } = await req.json();
 
-  if (!sale || sale.sale_date < new Date(Date.now() - 7*24*60*60*1000)) {
-    return Response.json({ error: "Edit window expired" }, { status: 403 });
-  }
-
-  // rollback stock
-  const [oldItems] = await db.query(
-    "SELECT * FROM sale_items WHERE sale_id=?",
-    [saleId]
-  );
-
-  for (const i of oldItems) {
-    await db.query(
-      "UPDATE stock SET quantity = quantity + ? WHERE id=?",
-      [i.quantity, i.stock_id]
-    );
-  }
-
-  await db.query("DELETE FROM sale_items WHERE sale_id=?", [saleId]);
-
-  // apply new items
-  for (const i of items) {
-    await db.query(
-      "INSERT INTO sale_items (sale_id,stock_id,product_id,quantity,price) VALUES (?,?,?,?,?)",
-      [saleId, i.stock_id, i.product_id, i.quantity, i.price]
+    /* ---------- CHECK 7-DAY WINDOW ---------- */
+    const saleResult = await db.query(
+      `SELECT sale_date FROM sales WHERE id = $1`,
+      [saleId]
     );
 
+    if (saleResult.rows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Sale not found" }),
+        { status: 404 }
+      );
+    }
+
+    const saleDate = new Date(saleResult.rows[0].sale_date);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    if (saleDate < sevenDaysAgo) {
+      return new Response(
+        JSON.stringify({ error: "Edit window expired" }),
+        { status: 403 }
+      );
+    }
+
+    /* ---------- BEGIN TRANSACTION ---------- */
+    await db.query("BEGIN");
+
+    /* ---------- ROLLBACK OLD ITEMS ---------- */
+    const oldItemsResult = await db.query(
+      `SELECT * FROM sale_items WHERE sale_id = $1`,
+      [saleId]
+    );
+
+    for (const i of oldItemsResult.rows) {
+      await db.query(
+        `UPDATE stock SET quantity = quantity + $1 WHERE id = $2`,
+        [i.quantity, i.stock_id]
+      );
+    }
+
+    /* ---------- DELETE OLD SALE ITEMS ---------- */
     await db.query(
-      "UPDATE stock SET quantity = quantity - ? WHERE id=?",
-      [i.quantity, i.stock_id]
+      `DELETE FROM sale_items WHERE sale_id = $1`,
+      [saleId]
+    );
+
+    /* ---------- INSERT NEW SALE ITEMS + UPDATE STOCK ---------- */
+    for (const i of items) {
+      await db.query(
+        `
+        INSERT INTO sale_items
+          (sale_id, stock_id, product_id, quantity, price)
+        VALUES
+          ($1, $2, $3, $4, $5)
+        `,
+        [saleId, i.stock_id, i.product_id, i.quantity, i.price]
+      );
+
+      await db.query(
+        `UPDATE stock SET quantity = quantity - $1 WHERE id = $2`,
+        [i.quantity, i.stock_id]
+      );
+    }
+
+    /* ---------- UPDATE SALE TOTAL ---------- */
+    await db.query(
+      `UPDATE sales SET total_amount = $1 WHERE id = $2`,
+      [total_amount, saleId]
+    );
+
+    /* ---------- COMMIT TRANSACTION ---------- */
+    await db.query("COMMIT");
+
+    return new Response(
+      JSON.stringify({ success: true }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    await db.query("ROLLBACK");
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500 }
     );
   }
-
-  await db.query(
-    "UPDATE sales SET total_amount=? WHERE id=?",
-    [total_amount, saleId]
-  );
-
-  return Response.json({ success: true });
 }
